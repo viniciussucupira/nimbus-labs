@@ -326,7 +326,7 @@ async function main(): Promise<void> {
   );
 
   part("Every form that opens a payment page leaves the frame it is in");
-  const OPENS = /action=(?:"\/api\/store\/(?:checkout|package|paypal\/checkout)"|\{[^}]*"\/api\/store\/book"[^}]*\})/;
+  const OPENS = /action=(?:"\/api\/store\/(?:checkout|package|tip|paypal\/checkout)"|\{[^}]*"\/api\/store\/book"[^}]*\})/;
   const forms = [...sources("app"), ...sources("components")].flatMap((file) =>
     [...withoutComments(read(file)).matchAll(/<form\b[^>]*>/g)].map((m) => ({ file, tag: m[0] })).filter((f) => OPENS.test(f.tag)),
   );

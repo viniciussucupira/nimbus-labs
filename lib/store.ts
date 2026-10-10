@@ -76,6 +76,7 @@ import { type BundleProblem, bundleProblem, isBundle } from "@/lib/bundle-rules"
 import { offerableAfterPaying } from "@/lib/bundles";
 import { type DisplayStyle, type ProductImage } from "@/lib/product-image";
 import { type PagePart, USUAL_ORDER, parseOrder } from "@/lib/store-order";
+import { NO_TIPS, type StoreTips, parseTips } from "@/lib/store-tips";
 import {
   MAX_LINK_TITLE_LENGTH,
   MAX_STORE_LINKS,
@@ -488,6 +489,8 @@ export type Store = {
   quotes: StoreQuote[];
   /** The contact form on the store page (lib/store-contact.ts), with the same shape as the sign-up box's settings. */
   contact: StoreJoin;
+  /** "Support my work" on the store page (lib/store-tips.ts). Off on every store written before it existed. */
+  tips: StoreTips;
   /** The store's own questions and answers, on its page (lib/store-faq.ts). */
   faq: FaqItem[];
   /**
@@ -783,6 +786,7 @@ function parseStore(raw: unknown): Store | null {
       join: parseJoin(value.join),
       quotes: parseQuotes(value.quotes),
       contact: parseJoin(value.contact),
+      tips: parseTips(value.tips),
       faq: parseFaq(value.faq),
       intro: parseVideo(value.intro),
       order: parseOrder(value.order),
@@ -960,6 +964,7 @@ async function freshStore(fields: {
     join: { on: false, heading: "", line: "" },
     quotes: [],
     contact: { on: false, heading: "", line: "" },
+    tips: { ...NO_TIPS },
     faq: [],
     intro: null,
     order: [...USUAL_ORDER],
@@ -3113,6 +3118,11 @@ export async function setFaq(email: string, raw: unknown): Promise<Store | null>
 export async function setContact(email: string, raw: unknown): Promise<Store | null> {
   const contact = parseJoin(raw);
   return patchStore(email, () => ({ contact }));
+}
+
+/** Switches "Support my work" on the store page and saves its words and amounts (lib/store-tips.ts). */
+export async function setTips(email: string, tips: StoreTips): Promise<Store | null> {
+  return patchStore(email, () => ({ tips: parseTips(tips) }));
 }
 
 /** Keeps the newest reviews to quote on the store page (lib/store-quotes.ts). */

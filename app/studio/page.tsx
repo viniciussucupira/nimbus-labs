@@ -80,6 +80,8 @@ import { ContactBoxEditor } from "@/components/contact-box-editor";
 import { FaqEditor } from "@/components/faq-editor";
 import { StoreCoach } from "@/components/store-coach";
 import { PageOrderEditor } from "@/components/page-order-editor";
+import { tipsOpen } from "@/lib/store-tip-checkout";
+import { TipsEditor } from "@/components/tips-editor";
 import { joinOpen } from "@/lib/store-join";
 import { contactOpen } from "@/lib/store-contact";
 import { visibleCount } from "@/lib/catalog";
@@ -1007,6 +1009,7 @@ export default async function StudioPage({
                   products: visibleCount(store) > 0,
                   quotes: store.quotes.length > 0,
                   links: store.links.some((link) => !link.header),
+                  tips: tipsOpen(store),
                   signup: joinOpen(store),
                   faq: store.faq.length > 0,
                   contact: contactOpen(store),
@@ -1206,6 +1209,15 @@ export default async function StudioPage({
 
             {may("page") ? <FaqEditor faq={store.faq} ai={ai} /> : null}
 
+            {may("page") ? (
+              <TipsEditor
+                tips={store.tips}
+                storeName={store.name}
+                language={store.language}
+                currency={store.currency}
+                blocked={canSell(store) ? "" : "stripe"}
+              />
+            ) : null}
             {may("page") ? (
               <ContactBoxEditor
                 contact={store.contact}
@@ -2229,7 +2241,7 @@ export default async function StudioPage({
                           <p className="mt-1 text-sm text-ink-soft">
                             {sale.email ? (
                               <>
-                                Bought by{" "}
+                                {sale.isTip ? "Given by" : "Bought by"}{" "}
                                 <a
                                   href={`mailto:${sale.email}`}
                                   className="underline underline-offset-2"
@@ -2263,7 +2275,9 @@ export default async function StudioPage({
                             </p>
                           ) : null}
                           <p className="mt-1 text-xs text-ink-soft">
-                            {sale.isCall
+                            {sale.isTip
+                              ? "Support from your store page: nothing was bought, so there is nothing to send."
+                              : sale.isCall
                               ? "A booked call: you were both emailed its time."
                               : sale.stillDownloadable
                                 ? "Their download link still works."
@@ -2271,7 +2285,7 @@ export default async function StudioPage({
                             Stripe reference {sale.reference}
                           </p>
                           {/* A booked call has its own confirmation, and a one-click extra is part of its checkout's. */}
-                          {!sale.isCall && sale.email && sale.reference.startsWith("cs_") ? (
+                          {!sale.isCall && !sale.isTip && sale.email && sale.reference.startsWith("cs_") ? (
                             <p className="mt-2">
                               <ResendPurchase reference={sale.reference} email={sale.email} />
                             </p>

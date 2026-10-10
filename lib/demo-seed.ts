@@ -62,6 +62,7 @@ import {
   setProductFile,
   setAnswers,
   setFaq,
+  setTips,
   setProductImage,
   setProductPage,
   setPostCount,
@@ -108,6 +109,16 @@ export const DEMO_STORE = {
     { q: "Who is Jenny?", a: "A fictional cook. The store shows what a creator's store on Marktmorgen looks like and does, from the first visit to the download." },
     { q: "Can I make a store like this one?", a: "Yes. Everything on this page — the products, their pages, the links, these questions — is made in the Marktmorgen studio, without code." },
   ],
+  /**
+   * "Support my work" (lib/store-tips.ts), switched on so a visitor can try
+   * it, and saying in its own line that nothing real is given here.
+   */
+  tips: {
+    on: true,
+    heading: "",
+    line: "Jenny is fictional, so this one is a try-out: it runs in Stripe's test mode with the test card, and no real money moves.",
+    amounts: [] as number[],
+  },
   /** In the spotlight (lib/store-link.ts), as a creator's one most important link would be. */
   link: { title: "Open a store like this one", url: `${SITE_URL}/`, spotlight: true },
   /**
@@ -474,6 +485,11 @@ async function ensureStore(pending: string[]): Promise<Store | null> {
     const done = await setFaq(REF, DEMO_STORE.faq);
     if (done) store = done;
     else pending.push(refused("faq", "refused"));
+  }
+  if (JSON.stringify(store.tips) !== JSON.stringify(DEMO_STORE.tips)) {
+    const done = await setTips(REF, { ...DEMO_STORE.tips, amounts: [...DEMO_STORE.tips.amounts] });
+    if (done) store = done;
+    else pending.push(refused("tips", "refused"));
   }
   if (store.answers.on !== DEMO_STORE.answers.on || store.answers.facts !== DEMO_STORE.answers.facts) {
     const done = await setAnswers(REF, { ...DEMO_STORE.answers });

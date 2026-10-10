@@ -788,6 +788,8 @@ export async function salesCsv(store: Store, sinceSeconds: number): Promise<{ cs
     const option = product?.options.find((o) => o.id === meta.option)?.label ?? meta.option ?? "";
     const kind = sale.upsell
       ? "upsell"
+      : meta.kind === "tip"
+        ? "support"
       : meta.kind === "call"
         ? "call"
         : meta.kind === "plan"
