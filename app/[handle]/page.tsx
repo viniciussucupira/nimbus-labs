@@ -23,6 +23,8 @@ import { joinOpen } from "@/lib/store-join";
 import { StoreJoinBox } from "@/components/store-join-box";
 import { showingLinks } from "@/lib/store-link";
 import { PROVIDER_NAMES, readVideo } from "@/lib/sales-page";
+import { AUDIO_NAMES, readAudio } from "@/lib/audio-embed";
+import { AudioEmbed } from "@/components/audio-embed";
 import { VideoEmbed } from "@/components/video-embed";
 import { blockWords } from "@/lib/buyer-words/blocks";
 import { StoreSocialsRow } from "@/components/store-socials-row";
@@ -504,6 +506,23 @@ export default async function StorePage({ params, searchParams }: Params) {
                       );
                     }
                     const video = link.play ? readVideo(link.url) : null;
+                const audio = link.play && !video ? readAudio(link.url) : null;
+                if (audio) {
+                  // Music or a podcast played here (lib/audio-embed.ts); the way to the service is still a counted link.
+                  return (
+                    <li key={link.id} className={`st-card st-link-audio${link.spotlight ? " st-spotlight" : ""}`}>
+                      <p className="px-5 pb-3 pt-4 text-center font-bold sm:px-6">{link.title}</p>
+                      <div className="px-3 sm:px-4">
+                        <AudioEmbed audio={audio} title={link.title} lang={store.language} />
+                      </div>
+                      <p className="px-5 py-3 text-center text-sm sm:px-6">
+                        <a href={link.url} data-link={link.id} target="_blank" rel="noopener noreferrer nofollow ugc" className="st-footer-link">
+                          {bw.videoOpen(AUDIO_NAMES[audio.provider])}
+                        </a>
+                      </p>
+                    </li>
+                  );
+                }
                     if (video) {
                       // Played here, on the store page; the way to its own site is still counted.
                       return (

@@ -20,6 +20,12 @@
  */
 
 import { readVideo } from "@/lib/sales-page";
+import { readAudio } from "@/lib/audio-embed";
+
+/** Whether a link can be played on the page: a video (lib/sales-page.ts) or music or a podcast (lib/audio-embed.ts). */
+export function playsOnPage(url: string): boolean {
+  return readVideo(url) !== null || readAudio(url) !== null;
+}
 import { type ProductImage, parseProductImage } from "@/lib/product-image";
 
 /**
@@ -157,7 +163,7 @@ export function parseStoreLinks(raw: unknown): StoreLink[] {
         title: value.title.slice(0, MAX_LINK_TITLE_LENGTH),
         url: value.url,
         addedAt: typeof value.addedAt === "string" ? value.addedAt : "",
-        ...linkExtras(value as Record<string, unknown>, readVideo(value.url) !== null),
+        ...linkExtras(value as Record<string, unknown>, playsOnPage(value.url)),
         ...(image ? { image } : {}),
       });
     }

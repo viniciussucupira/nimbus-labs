@@ -13,7 +13,16 @@ import {
   linkWhen,
 } from "@/lib/store-link";
 import { PROVIDER_NAMES, readVideo } from "@/lib/sales-page";
+import { AUDIO_NAMES, readAudio } from "@/lib/audio-embed";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
+
+/** What a link plays on the page, by name: "the YouTube video", "the Spotify player"; null when it plays nothing. */
+function playable(url: string): { name: string; what: string } | null {
+  const video = readVideo(url);
+  if (video) return { name: PROVIDER_NAMES[video.provider], what: `The ${PROVIDER_NAMES[video.provider]} video plays` };
+  const audio = readAudio(url);
+  return audio ? { name: AUDIO_NAMES[audio.provider], what: `The ${AUDIO_NAMES[audio.provider]} player plays` } : null;
+}
 
 const MESSAGES: Record<string, string> = {
   ...STUDIO_MESSAGES,
@@ -53,8 +62,8 @@ function linkTags(link: StoreLink, hydrated: boolean): string[] {
   const tags: string[] = link.header ? ["Heading"] : [];
   if (link.spotlight) tags.push("Spotlight");
   if (link.play) {
-    const video = readVideo(link.url);
-    if (video) tags.push(`Plays on your page (${PROVIDER_NAMES[video.provider]})`);
+    const plays = playable(link.url);
+    if (plays) tags.push(`Plays on your page (${plays.name})`);
   }
   // Times are said in the creator's own time zone, which only the browser knows.
   if (!hydrated) {
@@ -75,7 +84,7 @@ function payloadOf(draft: Draft) {
     title: draft.title,
     url: draft.url,
     spotlight: draft.spotlight,
-    play: draft.play && readVideo(draft.url) !== null,
+    play: draft.play && playable(draft.url) !== null,
     from: fromLocal(draft.from),
     until: fromLocal(draft.until),
   };
@@ -127,7 +136,7 @@ function LinkForm({
   onSubmit: () => void;
   onCancel: () => void;
 }) {
-  const video = readVideo(draft.url);
+  const plays = playable(draft.url);
   return (
     <form
       noValidate
@@ -192,7 +201,7 @@ function LinkForm({
           </span>
         </label>
         )}
-        {video && !draft.header ? (
+        {plays && !draft.header ? (
           <label className="flex items-start gap-3 text-sm text-ink">
             <input
               type="checkbox"
@@ -202,7 +211,7 @@ function LinkForm({
             />
             <span>
               <span className="font-semibold">{`Play it on your page.`}</span>{" "}
-              <span className="text-ink-soft">{`The ${PROVIDER_NAMES[video.provider]} video plays right on your store, without sending anyone away. It loads only when someone presses play.`}</span>
+              <span className="text-ink-soft">{`${plays.what} right on your store, without sending anyone away. It loads only when someone presses play.`}</span>
             </span>
           </label>
         ) : null}
