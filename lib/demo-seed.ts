@@ -62,6 +62,7 @@ import {
   setProductDisplay,
   setProductFile,
   setAnswers,
+  setCartDeal,
   setFaq,
   setTips,
   setProductImage,
@@ -120,6 +121,12 @@ export const DEMO_STORE = {
     line: "Jenny is fictional, so this one is a try-out: it runs in Stripe's test mode with the test card, and no real money moves.",
     amounts: [] as number[],
   },
+  /**
+   * "Buy more, save more" (lib/cart-rules.ts), switched on so a visitor sees
+   * what a buyer sees: the offer under every Add to cart, the cart counting
+   * down to it, and the test-mode checkout charging that much less.
+   */
+  cartDeal: { on: true, min: 2, percent: 10 },
   /** In the spotlight (lib/store-link.ts), as a creator's one most important link would be. */
   link: { title: "Open a store like this one", url: `${SITE_URL}/`, spotlight: true },
   /**
@@ -458,6 +465,11 @@ async function ensureStore(pending: string[]): Promise<Store | null> {
     const done = await setAnswers(REF, { ...DEMO_STORE.answers });
     if (done) store = done;
     else pending.push(refused("answers", "refused"));
+  }
+  if (JSON.stringify(store.cartDeal) !== JSON.stringify(DEMO_STORE.cartDeal)) {
+    const done = await setCartDeal(REF, { ...DEMO_STORE.cartDeal });
+    if (done) store = done;
+    else pending.push(refused("cart_deal", "refused"));
   }
   const extras = { spotlight: DEMO_STORE.link.spotlight };
   if (!store.links.some((link) => link.url === DEMO_STORE.link.url && link.title === DEMO_STORE.link.title && Boolean(link.spotlight) === extras.spotlight)) {

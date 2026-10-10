@@ -26,6 +26,7 @@
  */
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { offersCart } from "@/lib/cart-checkout";
 import { DEMO_EXTRAS, DEMO_PRODUCT, DEMO_STORE, type SeedDeps, ensureDemoStore, imageSize, seedFingerprint } from "@/lib/demo-seed";
 import { DEMO_CONNECTED_ACCOUNT } from "@/lib/demo-account";
 import { getDemoFile } from "@/lib/demo-file";
@@ -155,6 +156,7 @@ async function main(): Promise<void> {
     DEMO_EXTRAS.map((e) => [e.title, Number(e.price) * 100, e.file, true, true, true, true]),
   );
   is("its own questions, each true of the demo", store.faq.map((item) => item.q), DEMO_STORE.faq.map((item) => item.q));
+  is("buy more, save more is on, so a visitor sees it under Add to cart", [store.cartDeal, offersCart(store)], [{ on: true, min: 2, percent: 10 }, true]);
   is("the demo's one link is in the spotlight", store.links.map((l) => [l.title, l.spotlight]), [[DEMO_STORE.link.title, true]]);
   is("which can be bought", canSellProduct(store, listing), true);
 
