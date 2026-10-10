@@ -52,9 +52,11 @@ import {
   REVIEWS_ON_PAGE,
   REVIEW_ID_PATTERN,
   type Review,
+  type ReviewPhoto,
   type Summary,
   summarise,
 } from "@/lib/review-summary";
+import { parseProductImage } from "@/lib/product-image";
 
 export * from "@/lib/review-summary";
 
@@ -123,6 +125,12 @@ export function readRating(value: unknown): number | null {
 }
 
 /** Whatever came back from storage, made safe to use; null when it cannot be a review. */
+/** A kept review photo, made safe: a picture in a store's picture folder, of a sensible size; null otherwise. */
+export function parseReviewPhoto(raw: unknown): ReviewPhoto | null {
+  const image = parseProductImage(raw && typeof raw === "object" ? { ...(raw as object), alt: "", small: null } : null);
+  return image && image.width <= 4_000 && image.height <= 4_000 ? { path: image.path, width: image.width, height: image.height } : null;
+}
+
 export function parseReview(raw: unknown): Review | null {
   if (typeof raw !== "string" || !raw) return null;
   try {
@@ -150,6 +158,7 @@ export function parseReview(raw: unknown): Review | null {
       hidden: value.hidden === true,
       refunded: value.refunded === true,
       reply: reply && reply.text ? reply : null,
+      photo: parseReviewPhoto(value.photo),
     };
   } catch {
     return null;
@@ -324,6 +333,8 @@ export async function saveReview(statsId: string, input: SaveInput, now = Date.n
       hidden: before?.hidden ?? false,
       refunded: false,
       reply: before?.reply ?? null,
+      // A photo stays through an edit; it is added or taken off by setReviewPhoto.
+      photo: before?.photo ?? null,
     };
     await write(statsId, review);
     const pays: (string | number)[][] = [];
@@ -382,6 +393,20 @@ async function creatorChange(
     await recount(statsId, productId);
     return after;
   });
+}
+
+/**
+ * Puts a photo on a review, or takes it off (null): the buyer's own, or the
+ * creator taking one off. What comes back is the photo it displaced, for the
+ * caller to delete once this is written.
+ */
+export async function setReviewPhoto(statsId: string, productId: string, id: string, photo: ReviewPhoto | null): Promise<{ review: Review; removed: ReviewPhoto | null } | "missing" | "busy"> {
+  let removed: ReviewPhoto | null = null;
+  const done = await creatorChange(statsId, productId, id, (review) => {
+    removed = review.photo && review.photo.path !== photo?.path ? review.photo : null;
+    return { ...review, photo };
+  });
+  return typeof done === "string" ? done : { review: done, removed };
 }
 
 export function setHidden(statsId: string, productId: string, id: string, hidden: boolean) {
@@ -484,11 +509,12 @@ export async function studioReviews(
   return { rows, total: Number(total) || 0, unseen: Number(unseen) || 0 };
 }
 
-/** Forgets every review of a product that is gone. */
-export async function dropReviews(statsId: string | null, productId: string): Promise<void> {
-  if (!statsId || !STATS_ID_PATTERN.test(statsId) || !isRedisConfigured()) return;
-  const [raw] = await redisPipeline([["HKEYS", productKey(statsId, productId)]]);
+/** Forgets every review of a product that is gone. Returns their photos' paths, for the caller to delete. */
+export async function dropReviews(statsId: string | null, productId: string): Promise<string[]> {
+  if (!statsId || !STATS_ID_PATTERN.test(statsId) || !isRedisConfigured()) return [];
+  const [raw, all] = await redisPipeline([["HKEYS", productKey(statsId, productId)], ["HVALS", productKey(statsId, productId)]]);
   const ids = Array.isArray(raw) ? (raw as string[]) : [];
+  const photos = (Array.isArray(all) ? (all as unknown[]) : []).map((one) => parseReview(one)?.photo?.path).filter((path): path is string => Boolean(path));
   const members = ids.map((id) => `${productId}|${id}`);
   await redisPipeline([
     ["DEL", productKey(statsId, productId)],
@@ -496,4 +522,5 @@ export async function dropReviews(statsId: string | null, productId: string): Pr
     ["HDEL", summaryKey(statsId), productId],
     ...(members.length ? [["ZREM", allKey(statsId), ...members], ["ZREM", newKey(statsId), ...members]] : []),
   ]);
+  return photos;
 }

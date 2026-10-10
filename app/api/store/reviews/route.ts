@@ -2,7 +2,8 @@ import { type NextRequest, after } from "next/server";
 import { setReviewAsk } from "@/lib/store";
 import { refreshStoreQuotes } from "@/lib/store-quotes";
 import { guardStoreWrite, text } from "@/lib/store-request";
-import { MAX_REPLY_TEXT, REVIEW_ID_PATTERN, markSeen, setHidden, setReply } from "@/lib/reviews";
+import { MAX_REPLY_TEXT, REVIEW_ID_PATTERN, markSeen, setHidden, setReply, setReviewPhoto } from "@/lib/reviews";
+import { dropReviewPhoto } from "@/lib/review-photo";
 import { MAX_ASK_DAYS, MIN_ASK_DAYS } from "@/lib/review-ask";
 import { canWrite } from "@/lib/mail";
 
@@ -13,11 +14,14 @@ const PRODUCT_ID = /^[a-z0-9]{6,40}$/;
  *
  *   { action: "hide", product, id, hidden }   take a review's words off the page, or put them back
  *   { action: "reply", product, id, text }    answer it in public; empty text takes the answer away
+ *   { action: "photo", product, id }          take the buyer's photo off it, and delete it
  *   { action: "seen", items | all }           take reviews out of the queue of new ones
  *   { action: "ask", days }                   the review-request email: 3 to 30 days, or 0 for off
  *
  * There is no action that changes what a buyer wrote or the stars they gave,
- * and none that deletes a review: only its buyer can (lib/reviews.ts).
+ * and none that deletes a review: only its buyer can (lib/reviews.ts). A
+ * photo can be taken off, as a picture is what a page should never show
+ * against its creator's will.
  */
 export async function POST(request: NextRequest) {
   // Moderating is for everyone on the team who answers buyers (lib/team-roles.ts,
@@ -56,6 +60,14 @@ export async function POST(request: NextRequest) {
     const productId = text(body.product, 40);
     const id = text(body.id, 24);
     if (!PRODUCT_ID.test(productId) || !REVIEW_ID_PATTERN.test(id)) return Response.json({ ok: false, error: "missing" }, { status: 400 });
+
+    if (action === "photo") {
+      const taken = await setReviewPhoto(statsId, productId, id, null);
+      if (taken === "busy") return Response.json({ ok: false, error: "busy" }, { status: 409 });
+      if (taken === "missing") return Response.json({ ok: false, error: "missing" }, { status: 404 });
+      await dropReviewPhoto(taken.removed);
+      return Response.json({ ok: true });
+    }
 
     const done =
       action === "hide"

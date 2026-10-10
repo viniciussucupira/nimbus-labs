@@ -278,6 +278,7 @@ const en = {
     slow: "That was a lot of tries in a short time. Wait a few minutes and send it again.",
     busy: "Someone else was saving at the same moment. Send it again.",
     error: "Something went wrong on our side. Nothing was changed. Try again in a moment.",
+    photo: "That photo could not be added. Try another one, as a JPEG or straight from your camera.",
   } as Record<string, string>,
   yourRating: (title: string) => `Your rating for ${title}`,
   whatYouThink: "What you think (optional)",
@@ -289,6 +290,11 @@ const en = {
   reviewPublic: (store: string) =>
     `Your review is public on ${store}'s page, marked as a verified purchase. Your email address is never shown. ${store} can reply and can hide it, but cannot change it.`,
   deleteReview: "Delete my review",
+  reviewPhoto: "Add a photo (optional)",
+  reviewPhotoHint: "A photo of what you made with it, or of it in use. It shows with your review.",
+  reviewPhotoRemove: "Remove my photo",
+  reviewPhotoYours: "Your photo",
+  reviewPhotoAlt: (name: string) => `Photo from ${name}`,
 
   // ---- Asking for a review: its email ----------------------------------------------------------
   askSubject: (title: string) => `How is ${title}?`,
@@ -588,6 +594,7 @@ const es: GivingWords = {
     slow: "Han sido muchos intentos en poco tiempo. Espera unos minutos y vuelve a enviarla.",
     busy: "Alguien más estaba guardando en ese mismo momento. Vuelve a enviarla.",
     error: "Algo ha fallado por nuestra parte. No se ha cambiado nada. Vuelve a intentarlo en un momento.",
+    photo: "No se pudo añadir esa foto. Prueba con otra, en JPEG o directamente de tu cámara.",
   },
   yourRating: (title) => `Tu valoración de ${title}`,
   whatYouThink: "Qué te parece (opcional)",
@@ -598,6 +605,11 @@ const es: GivingWords = {
   reviewPublic: (store) =>
     `Tu reseña es pública en la página de ${store}, marcada como compra verificada. Tu dirección de email nunca se muestra. ${store} puede responder y ocultarla, pero no puede cambiarla.`,
   deleteReview: "Eliminar mi reseña",
+  reviewPhoto: "Añade una foto (opcional)",
+  reviewPhotoHint: "Una foto de lo que hiciste con él o de cómo lo usas. Se muestra con tu reseña.",
+  reviewPhotoRemove: "Quitar mi foto",
+  reviewPhotoYours: "Tu foto",
+  reviewPhotoAlt: (name) => `Foto de ${name}`,
 
   askSubject: (title) => `¿Qué tal ${title}?`,
   listAnd: (list, last) => `${list} y ${last}`,
@@ -887,6 +899,7 @@ const fr: GivingWords = {
     slow: "Cela fait beaucoup de tentatives en peu de temps. Patientez quelques minutes et renvoyez-le.",
     busy: "Quelqu'un d'autre enregistrait au même moment. Renvoyez-le.",
     error: "Un problème est survenu de notre côté. Rien n'a été modifié. Réessayez dans un instant.",
+    photo: "Impossible d'ajouter cette photo. Essayez-en une autre, en JPEG ou prise directement avec votre appareil.",
   },
   yourRating: (title) => `Votre note pour ${title}`,
   whatYouThink: "Votre avis (facultatif)",
@@ -897,6 +910,11 @@ const fr: GivingWords = {
   reviewPublic: (store) =>
     `Votre avis est public sur la page de ${store}, marqué comme achat vérifié. Votre adresse e-mail n'est jamais affichée. ${store} peut y répondre et le masquer, mais pas le modifier.`,
   deleteReview: "Supprimer mon avis",
+  reviewPhoto: "Ajoutez une photo (facultatif)",
+  reviewPhotoHint: "Une photo de ce que vous avez réalisé avec, ou de son utilisation. Elle s'affiche avec votre avis.",
+  reviewPhotoRemove: "Retirer ma photo",
+  reviewPhotoYours: "Votre photo",
+  reviewPhotoAlt: (name) => `Photo de ${name}`,
 
   askSubject: (title) => `Que pensez-vous de ${title}${S}?`,
   listAnd: (list, last) => `${list} et ${last}`,
@@ -1186,6 +1204,7 @@ const de: GivingWords = {
     slow: "Das waren viele Versuche in kurzer Zeit. Warten Sie ein paar Minuten und senden Sie sie erneut.",
     busy: "Jemand anderes hat im selben Moment gespeichert. Senden Sie sie erneut.",
     error: "Bei uns ist etwas schiefgelaufen. Es wurde nichts geändert. Versuchen Sie es gleich noch einmal.",
+    photo: "Dieses Foto konnte nicht hinzugefügt werden. Versuche ein anderes, als JPEG oder direkt aus der Kamera.",
   },
   yourRating: (title) => `Ihre Sterne für ${title}`,
   whatYouThink: "Ihre Meinung (optional)",
@@ -1196,6 +1215,11 @@ const de: GivingWords = {
   reviewPublic: (store) =>
     `Ihre Bewertung ist auf der Seite von ${store} öffentlich sichtbar und als verifizierter Kauf gekennzeichnet. Ihre E-Mail-Adresse wird nie angezeigt. ${store} kann antworten und sie ausblenden, aber nicht ändern.`,
   deleteReview: "Meine Bewertung löschen",
+  reviewPhoto: "Füge ein Foto hinzu (optional)",
+  reviewPhotoHint: "Ein Foto von dem, was du damit gemacht hast, oder davon im Einsatz. Es erscheint mit deiner Bewertung.",
+  reviewPhotoRemove: "Mein Foto entfernen",
+  reviewPhotoYours: "Dein Foto",
+  reviewPhotoAlt: (name) => `Foto von ${name}`,
 
   askSubject: (title) => `Wie gefällt Ihnen ${title}?`,
   listAnd: (list, last) => `${list} und ${last}`,
@@ -1489,6 +1513,7 @@ const it: GivingWords = {
     slow: "Sono stati molti tentativi in poco tempo. Aspetta qualche minuto e inviala di nuovo.",
     busy: "Qualcun altro stava salvando nello stesso momento. Inviala di nuovo.",
     error: "Qualcosa è andato storto da parte nostra. Non è stato modificato nulla. Riprova tra un momento.",
+    photo: "Non è stato possibile aggiungere quella foto. Provane un'altra, in JPEG o scattata dalla fotocamera.",
   },
   yourRating: (title) => `Il tuo voto per ${title}`,
   whatYouThink: "Cosa ne pensi (facoltativo)",
@@ -1499,6 +1524,11 @@ const it: GivingWords = {
   reviewPublic: (store) =>
     `La tua recensione è pubblica sulla pagina di ${store}, segnata come acquisto verificato. Il tuo indirizzo email non viene mai mostrato. ${store} può rispondere e nasconderla, ma non può modificarla.`,
   deleteReview: "Elimina la mia recensione",
+  reviewPhoto: "Aggiungi una foto (facoltativo)",
+  reviewPhotoHint: "Una foto di ciò che hai realizzato o di come lo usi. Appare con la tua recensione.",
+  reviewPhotoRemove: "Rimuovi la mia foto",
+  reviewPhotoYours: "La tua foto",
+  reviewPhotoAlt: (name) => `Foto di ${name}`,
 
   askSubject: (title) => `Com'è ${title}?`,
   listAnd: (list, last) => `${list} e ${last}`,
@@ -1785,6 +1815,7 @@ const nl: GivingWords = {
     slow: "Dat waren veel pogingen in korte tijd. Wacht een paar minuten en verstuur het opnieuw.",
     busy: "Iemand anders was op hetzelfde moment aan het opslaan. Verstuur het opnieuw.",
     error: "Er ging iets mis aan onze kant. Er is niets gewijzigd. Probeer het zo opnieuw.",
+    photo: "Die foto kon niet worden toegevoegd. Probeer een andere, als JPEG of rechtstreeks van je camera.",
   },
   yourRating: (title) => `Je score voor ${title}`,
   whatYouThink: "Wat je ervan vindt (optioneel)",
@@ -1795,6 +1826,11 @@ const nl: GivingWords = {
   reviewPublic: (store) =>
     `Je beoordeling is openbaar op de pagina van ${store}, gemarkeerd als geverifieerde aankoop. Je e-mailadres wordt nooit getoond. ${store} kan erop reageren en haar verbergen, maar niet wijzigen.`,
   deleteReview: "Mijn beoordeling verwijderen",
+  reviewPhoto: "Voeg een foto toe (optioneel)",
+  reviewPhotoHint: "Een foto van wat je ermee maakte, of ervan in gebruik. Hij verschijnt bij je beoordeling.",
+  reviewPhotoRemove: "Mijn foto verwijderen",
+  reviewPhotoYours: "Je foto",
+  reviewPhotoAlt: (name) => `Foto van ${name}`,
 
   askSubject: (title) => `Hoe bevalt ${title}?`,
   listAnd: (list, last) => `${list} en ${last}`,
@@ -2088,6 +2124,7 @@ const pt: GivingWords = {
     slow: "Foram muitas tentativas em pouco tempo. Aguarde alguns minutos e envie-a novamente.",
     busy: "Outra pessoa estava a guardar no mesmo momento. Envie-a novamente.",
     error: "Algo correu mal do nosso lado. Nada foi alterado. Tente novamente daqui a pouco.",
+    photo: "Não foi possível adicionar essa fotografia. Experimente outra, em JPEG ou tirada diretamente com a câmara.",
   },
   yourRating: (title) => `A sua classificação de ${title}`,
   whatYouThink: "O que achou (opcional)",
@@ -2098,6 +2135,11 @@ const pt: GivingWords = {
   reviewPublic: (store) =>
     `A sua avaliação é pública na página de ${store}, marcada como compra verificada. O seu endereço de email nunca é mostrado. ${store} pode responder e ocultá-la, mas não a pode alterar.`,
   deleteReview: "Eliminar a minha avaliação",
+  reviewPhoto: "Adicione uma fotografia (opcional)",
+  reviewPhotoHint: "Uma fotografia do que fez com ele, ou de como o usa. Aparece com a sua avaliação.",
+  reviewPhotoRemove: "Remover a minha fotografia",
+  reviewPhotoYours: "A sua fotografia",
+  reviewPhotoAlt: (name) => `Fotografia de ${name}`,
 
   askSubject: (title) => `O que achou de ${title}?`,
   listAnd: (list, last) => `${list} e ${last}`,

@@ -13,6 +13,7 @@ import { ReviewAskEditor, ReviewRow, SeenAllButton, type StudioReview } from "@/
 import { AiOn } from "@/components/ai-assist";
 import { aiLeft, isAiConfigured } from "@/lib/ai";
 import { Stars } from "@/components/review-stars";
+import { imageUrl } from "@/lib/product-image";
 
 export const metadata: Metadata = {
   title: "Reviews — Marktmorgen",
@@ -69,6 +70,7 @@ export default async function StudioReviewsPage({ searchParams }: Params) {
     refunded: r.refunded,
     reply: r.reply?.text ?? "",
     unseen: r.unseen,
+    photo: r.photo ? imageUrl(r.photo) : null,
   }));
   const pages = Math.max(1, Math.ceil(list.total / PAGE_SIZE));
   const reviewed = named.filter((p) => (numbers.get(p.id)?.visible ?? 0) + (numbers.get(p.id)?.hidden ?? 0) > 0);
