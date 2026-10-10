@@ -1432,6 +1432,49 @@ try {
   }
 
   await keepSmall();
+  part("A media kit for brands, with a PDF to save");
+  {
+    await open(studio, `${LOCAL}/studio`);
+    const kit = studio.locator("section#media-kit");
+    await kit.getByRole("checkbox", { name: /Publish my media kit/ }).check();
+    await kit.getByRole("button", { name: "Add a platform" }).click();
+    await kit.getByLabel("Where").selectOption("instagram");
+    await kit.getByLabel("How many").fill("12.4k");
+    await kit.getByLabel("Average views (optional)").fill("3,100");
+    await kit.getByRole("button", { name: "Add a platform" }).click();
+    await kit.getByLabel("Where").nth(1).selectOption("email");
+    await kit.getByLabel("How many").nth(1).fill("2600");
+    await kit.getByRole("button", { name: "Draft it with AI" }).click();
+    await kit.getByRole("button", { name: "Use this one" }).first().click();
+    is("the introduction drafted with AI goes into the box", await kit.locator("#kit-pitch").inputValue(), "I cook weeknight dinners for busy families, and they cook along.");
+    is("asked with the numbers typed, not yet saved", services.writing().at(-1).messages[0].content.includes("Instagram: 12.4k, 3,100 average views"), true);
+    await kit.locator("#kit-facts").fill("68% in the US\nMost are 25 to 34");
+    await kit.getByRole("button", { name: "Add an offer" }).click();
+    await kit.getByLabel("What", { exact: true }).fill("One Instagram Reel");
+    await kit.getByLabel(/^Price/).fill("800");
+    await kit.getByRole("button", { name: "Add an offer" }).click();
+    await kit.getByLabel("What", { exact: true }).nth(1).fill("A newsletter mention");
+    await kit.locator("#kit-brands").fill("Acme Pans, Green Grocer");
+    await kit.getByRole("button", { name: "Save the media kit" }).click();
+    await studio.getByText("Media kit saved.").first().waitFor({ timeout: 30_000 });
+    await open(page, `${LOCAL}/@localshop`);
+    is("the store page links to it at its foot", await page.getByRole("link", { name: "Media kit" }).getAttribute("href"), "/@localshop/media-kit");
+    await open(page, `${LOCAL}/@localshop/media-kit`);
+    const main = await words(page.locator("main"));
+    is("the kit says who, to whom, and how many, compactly", [await words(page.locator("h1")), main.includes("12.4K followers"), main.includes("3.1K average views"), main.includes("2.6K subscribers"), main.includes("Combined reach 15K")], ["Harbor Kitchen Local", true, true, true, true]);
+    is("the numbers are said to be the creator's, with the day", /Numbers as stated by Harbor Kitchen Local, last updated [A-Z][a-z]+ \d{1,2}, \d{4}\./.test(main), true);
+    is("what this site counted is set apart", [main.includes("Counted by Marktmorgen"), main.includes("Products in the store")], [true, true]);
+    is("what a collaboration costs, or on request, and who they worked with", [main.includes("One Instagram Reel $800"), main.includes("A newsletter mention Price on request"), main.includes("Acme Pans"), main.includes("Green Grocer")], [true, true, true, true]);
+    is("a brand can write, or save it as a PDF", [await page.getByRole("link", { name: "Get in touch" }).getAttribute("href"), await page.getByRole("button", { name: "Save as PDF" }).count()], ["/@localshop#contact", 1]);
+    await page.emulateMedia({ media: "print" });
+    is("printed, the buttons are left out", await page.getByRole("button", { name: "Save as PDF" }).isVisible(), false);
+    await page.emulateMedia({ media: "screen" });
+    if (process.env.E2E_SHOTS) await page.screenshot({ path: join(process.env.E2E_SHOTS, "media-kit.png"), fullPage: true });
+    await open(page, `${LOCAL}/@longshop/media-kit`);
+    is("a store without one has no such page", await words(page.locator("h1")), "Nothing lives at this address");
+  }
+
+  await keepSmall();
   part("Logging in is not starting a store");
   await open(page, `${LOCAL}/signin?to=login`);
   is("pressed Log in: the page and its tab say log in", [await words(page.locator("h1")), await page.title()], ["Log in to your store", "Log in to your store — Marktmorgen"]);
@@ -1497,6 +1540,7 @@ try {
       ["a long store's search", "/@longshop?q=bread", 0],
       ["a message's page", "/@localshop/contact?status=sent", 0],
       ["a supporter's thank-you", tipPath, 0],
+      ["a media kit", "/@localshop/media-kit", 0],
       ["a post on it", postPath, 0],
       ["the studio's blog", "/studio/blog?edit=new", 1200],
     ];

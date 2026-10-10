@@ -1,0 +1,182 @@
+/**
+ * The words of a creator's media kit (lib/store-kit.ts), read by brands, and
+ * of the link to it at the foot of the store page. Browser-safe.
+ */
+import { type LanguageCode, parseLanguage } from "@/lib/store-language";
+
+const en = {
+  title: "Media kit",
+  audienceTitle: "Audience",
+  followers: "followers",
+  subscribers: "subscribers",
+  visitors: "visitors a month",
+  views: (count: string) => `${count} average views`,
+  reach: "Combined reach",
+  reachNote: "Added up across every platform, so somebody who follows in two places counts twice.",
+  stated: (store: string, date: string) => `Numbers as stated by ${store}, last updated ${date}.`,
+  factsTitle: "About the audience",
+  countedTitle: "Counted by Marktmorgen",
+  productsLabel: "Products in the store",
+  ratingLabel: "Buyers' rating",
+  reviews: (count: number, shown: string) => (count === 1 ? "from 1 review" : `from ${shown} reviews`),
+  sinceLabel: "Selling here since",
+  ratesTitle: "Work together",
+  ask: "Price on request",
+  brandsTitle: "Worked with",
+  contact: "Get in touch",
+  print: "Save as PDF",
+  storeLink: "Visit the store",
+};
+
+export type KitWords = typeof en;
+
+const es: KitWords = {
+  title: "Kit de medios",
+  audienceTitle: "Audiencia",
+  followers: "seguidores",
+  subscribers: "suscriptores",
+  visitors: "visitas al mes",
+  views: (count) => `${count} visualizaciones de media`,
+  reach: "Alcance combinado",
+  reachNote: "Sumado en todas las plataformas, así que quien sigue en dos sitios cuenta dos veces.",
+  stated: (store, date) => `Cifras indicadas por ${store}, actualizadas el ${date}.`,
+  factsTitle: "Sobre la audiencia",
+  countedTitle: "Contado por Marktmorgen",
+  productsLabel: "Productos en la tienda",
+  ratingLabel: "Valoración de compradores",
+  reviews: (count, shown) => (count === 1 ? "de 1 reseña" : `de ${shown} reseñas`),
+  sinceLabel: "Vende aquí desde",
+  ratesTitle: "Trabajemos juntos",
+  ask: "Precio a consultar",
+  brandsTitle: "Ha trabajado con",
+  contact: "Ponte en contacto",
+  print: "Guardar en PDF",
+  storeLink: "Ver la tienda",
+};
+
+const fr: KitWords = {
+  title: "Kit média",
+  audienceTitle: "Audience",
+  followers: "abonnés",
+  subscribers: "inscrits",
+  visitors: "visiteurs par mois",
+  views: (count) => `${count} vues en moyenne`,
+  reach: "Portée cumulée",
+  reachNote: "Additionnée sur toutes les plateformes : une personne qui suit à deux endroits compte deux fois.",
+  stated: (store, date) => `Chiffres indiqués par ${store}, mis à jour le ${date}.`,
+  factsTitle: "À propos de l'audience",
+  countedTitle: "Compté par Marktmorgen",
+  productsLabel: "Produits en boutique",
+  ratingLabel: "Note des acheteurs",
+  reviews: (count, shown) => (count === 1 ? "sur 1 avis" : `sur ${shown} avis`),
+  sinceLabel: "Vend ici depuis",
+  ratesTitle: "Travailler ensemble",
+  ask: "Prix sur demande",
+  brandsTitle: "A travaillé avec",
+  contact: "Prendre contact",
+  print: "Enregistrer en PDF",
+  storeLink: "Voir la boutique",
+};
+
+const de: KitWords = {
+  title: "Mediakit",
+  audienceTitle: "Reichweite",
+  followers: "Follower",
+  subscribers: "Abonnenten",
+  visitors: "Besucher im Monat",
+  views: (count) => `${count} Aufrufe im Schnitt`,
+  reach: "Reichweite zusammen",
+  reachNote: "Über alle Plattformen addiert: Wer an zwei Orten folgt, zählt doppelt.",
+  stated: (store, date) => `Zahlen laut ${store}, zuletzt aktualisiert am ${date}.`,
+  factsTitle: "Über das Publikum",
+  countedTitle: "Von Marktmorgen gezählt",
+  productsLabel: "Produkte im Shop",
+  ratingLabel: "Bewertung der Käufer",
+  reviews: (count, shown) => (count === 1 ? "aus 1 Bewertung" : `aus ${shown} Bewertungen`),
+  sinceLabel: "Verkauft hier seit",
+  ratesTitle: "Zusammenarbeit",
+  ask: "Preis auf Anfrage",
+  brandsTitle: "Hat gearbeitet mit",
+  contact: "Kontakt aufnehmen",
+  print: "Als PDF speichern",
+  storeLink: "Zum Shop",
+};
+
+const it: KitWords = {
+  title: "Kit per i media",
+  audienceTitle: "Pubblico",
+  followers: "follower",
+  subscribers: "iscritti",
+  visitors: "visitatori al mese",
+  views: (count) => `${count} visualizzazioni in media`,
+  reach: "Copertura complessiva",
+  reachNote: "Sommata su tutte le piattaforme, quindi chi segue in due posti conta due volte.",
+  stated: (store, date) => `Numeri indicati da ${store}, aggiornati il ${date}.`,
+  factsTitle: "Sul pubblico",
+  countedTitle: "Contato da Marktmorgen",
+  productsLabel: "Prodotti nel negozio",
+  ratingLabel: "Voto degli acquirenti",
+  reviews: (count, shown) => (count === 1 ? "su 1 recensione" : `su ${shown} recensioni`),
+  sinceLabel: "Vende qui dal",
+  ratesTitle: "Lavoriamo insieme",
+  ask: "Prezzo su richiesta",
+  brandsTitle: "Ha lavorato con",
+  contact: "Contattami",
+  print: "Salva in PDF",
+  storeLink: "Visita il negozio",
+};
+
+const nl: KitWords = {
+  title: "Mediakit",
+  audienceTitle: "Publiek",
+  followers: "volgers",
+  subscribers: "abonnees",
+  visitors: "bezoekers per maand",
+  views: (count) => `${count} weergaven gemiddeld`,
+  reach: "Gezamenlijk bereik",
+  reachNote: "Opgeteld over alle platforms, dus wie op twee plekken volgt, telt twee keer.",
+  stated: (store, date) => `Cijfers volgens ${store}, voor het laatst bijgewerkt op ${date}.`,
+  factsTitle: "Over het publiek",
+  countedTitle: "Geteld door Marktmorgen",
+  productsLabel: "Producten in de winkel",
+  ratingLabel: "Beoordeling door kopers",
+  reviews: (count, shown) => (count === 1 ? "uit 1 review" : `uit ${shown} reviews`),
+  sinceLabel: "Verkoopt hier sinds",
+  ratesTitle: "Samenwerken",
+  ask: "Prijs op aanvraag",
+  brandsTitle: "Werkte samen met",
+  contact: "Neem contact op",
+  print: "Opslaan als pdf",
+  storeLink: "Naar de winkel",
+};
+
+// European Portuguese: the courteous third person, as in lib/buyer-words/giving.ts.
+const pt: KitWords = {
+  title: "Kit de imprensa",
+  audienceTitle: "Público",
+  followers: "seguidores",
+  subscribers: "subscritores",
+  visitors: "visitantes por mês",
+  views: (count) => `${count} visualizações em média`,
+  reach: "Alcance combinado",
+  reachNote: "Somado em todas as plataformas, pelo que quem segue em dois sítios conta duas vezes.",
+  stated: (store, date) => `Números indicados por ${store}, atualizados a ${date}.`,
+  factsTitle: "Sobre o público",
+  countedTitle: "Contado pela Marktmorgen",
+  productsLabel: "Produtos na loja",
+  ratingLabel: "Avaliação dos compradores",
+  reviews: (count, shown) => (count === 1 ? "de 1 avaliação" : `de ${shown} avaliações`),
+  sinceLabel: "Vende aqui desde",
+  ratesTitle: "Trabalhar em conjunto",
+  ask: "Preço sob consulta",
+  brandsTitle: "Já trabalhou com",
+  contact: "Entre em contacto",
+  print: "Guardar em PDF",
+  storeLink: "Ver a loja",
+};
+
+export const KIT_WORDS: Record<LanguageCode, KitWords> = { en, es, fr, de, it, nl, pt };
+
+export function kitWords(language: unknown): KitWords {
+  return KIT_WORDS[parseLanguage(language)];
+}

@@ -82,6 +82,7 @@ import { StoreCoach } from "@/components/store-coach";
 import { PageOrderEditor } from "@/components/page-order-editor";
 import { tipsOpen } from "@/lib/store-tip-checkout";
 import { TipsEditor } from "@/components/tips-editor";
+import { KitEditor } from "@/components/kit-editor";
 import { joinOpen } from "@/lib/store-join";
 import { contactOpen } from "@/lib/store-contact";
 import { visibleCount } from "@/lib/catalog";
@@ -1208,6 +1209,17 @@ export default async function StudioPage({
             {may("page") ? <LinkEditor links={store.links} folder={pictures} /> : null}
 
             {may("page") ? <FaqEditor faq={store.faq} ai={ai} /> : null}
+
+            {may("page") ? (
+              <KitEditor
+                kit={store.kit}
+                handle={store.handle}
+                currency={store.currency}
+                socials={store.socials.map((social) => social.network)}
+                ai={ai}
+                contact={contactOpen(store)}
+              />
+            ) : null}
 
             {may("page") ? (
               <TipsEditor
