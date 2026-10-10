@@ -8,8 +8,7 @@ import {
   type LinkResult,
 } from "@/lib/store";
 import { MAX_LINK_LENGTH, readLink } from "@/lib/product-link";
-import { MAX_LINK_TITLE_LENGTH, linkExtras } from "@/lib/store-link";
-import { readVideo } from "@/lib/sales-page";
+import { MAX_LINK_TITLE_LENGTH, linkExtras, playsOnPage } from "@/lib/store-link";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { StoreFullError } from "@/lib/store";
 
@@ -68,8 +67,8 @@ export async function POST(request: NextRequest) {
       }
       result =
         action === "add"
-          ? await addStoreLink(ref, title, read.url, linkExtras(body, readVideo(read.url) !== null))
-          : await editStoreLink(ref, id, title, read.url, linkExtras(body, readVideo(read.url) !== null));
+          ? await addStoreLink(ref, title, read.url, linkExtras(body, playsOnPage(read.url)))
+          : await editStoreLink(ref, id, title, read.url, linkExtras(body, playsOnPage(read.url)));
     } else if (action === "remove") {
       result = await removeStoreLink(ref, id);
     } else {

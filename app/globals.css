@@ -1908,6 +1908,38 @@ a.chip {
 .st-part[data-part="products"]:not(.st-part-first) {
   margin-top: 2.5rem;
 }
+/* Music or a podcast played on the store page (components/audio-embed.tsx). */
+.st-audio-play {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 0.9rem;
+  padding: 0.75rem 1rem;
+  background: var(--st-accent-soft);
+  text-align: left;
+}
+.st-audio-play:focus-visible {
+  outline: 3px solid var(--st-accent-text);
+  outline-offset: 3px;
+}
+.st-audio-disc {
+  display: inline-flex;
+  height: 2.75rem;
+  width: 2.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--st-accent);
+  color: var(--st-on-accent);
+}
+.st-audio-frame {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 0.9rem;
+}
 /* A link's own picture in place of the icon (lib/store-link.ts, LinkImage). */
 .st-link-row.st-link-pictured {
   grid-template-columns: 3rem minmax(0, 1fr) 3rem;

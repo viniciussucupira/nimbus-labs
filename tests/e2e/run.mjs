@@ -1149,6 +1149,12 @@ try {
     await studio.locator("#link-from").fill("2099-01-01T09:00");
     await studio.getByRole("button", { name: "Add it" }).click();
     await studio.getByText("Shows from Jan 1, 9:00 AM").first().waitFor({ timeout: 30_000 });
+    await studio.getByRole("button", { name: "Add a link" }).click();
+    await studio.locator("#link-title").fill("Our kitchen playlist");
+    await studio.locator("#link-url").fill("https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M");
+    await studio.getByRole("checkbox", { name: /Play it on your page/ }).check();
+    await studio.getByRole("button", { name: "Add it" }).click();
+    await studio.getByText("Plays on your page (Spotify)").first().waitFor({ timeout: 30_000 });
     await studio.getByRole("button", { name: "Add a heading" }).click();
     await studio.locator("#link-title").fill("Watch first");
     is("a heading asks for no address", await studio.locator("#link-url").count(), 0);
@@ -1176,6 +1182,10 @@ try {
       await video.getByRole("button", { name: /Play the video: Watch the trailer/ }).count(),
       await video.locator("a[data-link]").getAttribute("href"),
     ], [1, true, 1, "https://youtu.be/dQw4w9WgXcQ"]);
+    const music = page.locator(".st-link-audio");
+    is("music plays on the page too, loading nothing until pressed", [await music.count(), await music.locator("iframe").count(), await music.locator("a[data-link]").getAttribute("href")], [1, 0, "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M"]);
+    await music.getByRole("button", { name: /Play: Our kitchen playlist\. It loads from Spotify\./ }).click();
+    is("pressed, Spotify's own player, built here, at its height", [await music.locator("iframe").getAttribute("src"), await music.locator("iframe").getAttribute("height")], ["https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M?autoplay=1", "352"]);
     is("a link scheduled for later is not on the page yet", await page.getByText("Launch week offer").count(), 0);
     is("the heading stands over the links after it", await page.getByRole("heading", { name: "Watch first" }).count(), 1);
     await video.getByRole("button", { name: /Play the video/ }).click();

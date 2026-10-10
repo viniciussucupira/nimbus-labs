@@ -53,6 +53,7 @@
  */
 
 import { VIDEO_FRAME_ORIGINS } from "./sales-page";
+import { AUDIO_FRAME_ORIGINS } from "./audio-embed";
 import { STREAM_API_ORIGIN, STREAM_PLAYER_ORIGIN } from "./stream-rules";
 import { VAULT_FILES } from "./vault-rules";
 import { REVEAL_HASHES } from "./reveal-scripts";
@@ -136,7 +137,7 @@ export function dynamicPolicy(nonce: string, options: { store?: boolean; room?: 
     // video's pieces, and its player the one a lesson page frames
     // (lib/stream.ts); the player, like the other three, on a store's pages only.
     "connect-src": ["'self'", BLOB_API, BLOB_FILES, VAULT_FILES, STREAM_API_ORIGIN, ...(store ? PIXEL_CONNECT : [])],
-    "frame-src": ["'self'", ...(store ? [...PIXEL_FRAMES, ...VIDEO_FRAME_ORIGINS, STREAM_PLAYER_ORIGIN] : []), ...(room ? [ROOM_FRAME_ORIGIN] : [])],
+    "frame-src": ["'self'", ...(store ? [...PIXEL_FRAMES, ...VIDEO_FRAME_ORIGINS, ...AUDIO_FRAME_ORIGINS, STREAM_PLAYER_ORIGIN] : []), ...(room ? [ROOM_FRAME_ORIGIN] : [])],
   });
 }
 
