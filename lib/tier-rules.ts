@@ -37,12 +37,13 @@ type TierLike = {
   recurring: { interval: string; payments: number } | null;
   options: unknown[];
   pwyw?: unknown;
+  intro?: unknown;
   hidden?: boolean;
 };
 
 /**
  * Whether a product can be a tier: a paid membership that runs until it is
- * canceled, at one price. One that ends after a set number of payments was
+ * canceled, at one price, with no introductory price. One that ends after a set number of payments was
  * sold as that many payments, and a switch would have to rewrite its end.
  */
 export function canTier(product: TierLike): boolean {
@@ -51,7 +52,9 @@ export function canTier(product: TierLike): boolean {
     product.recurring !== null &&
     product.recurring.payments === 0 &&
     product.options.length === 0 &&
-    !product.pwyw
+    !product.pwyw &&
+    // A fixed amount off its first payments could follow a member to a cheaper plan (lib/intro-price.ts).
+    !product.intro
   );
 }
 

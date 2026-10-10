@@ -1977,6 +1977,52 @@ try {
   }
 
   await keepSmall();
+  part("A membership's first months for less");
+  {
+    await open(studio, `${LOCAL}/studio`);
+    await studio.getByRole("button", { name: "Add something to sell" }).click();
+    await studio.getByLabel("What you are selling").fill("Supper Club");
+    await studio.getByLabel("Price", { exact: true }).fill("20");
+    await studio.getByLabel("How often it charges").selectOption("month");
+    await studio.getByLabel(/^Introductory price/).fill("5");
+    await studio.getByLabel("for the first").selectOption("3");
+    is("the studio says what the page will say", await words(studio.getByText(/^Your page will say:/)), "Your page will say: $5 a month for the first 3 months, then $20 a month.");
+    await studio.getByLabel(/^Free trial/).fill("7");
+    await studio.getByRole("button", { name: "Add it" }).click();
+    const refused = studio.getByText("A membership starts with one offer: a free trial or an introductory price. Empty one of them.");
+    await refused.waitFor({ timeout: 30_000 });
+    is("not beside a free trial", await refused.count(), 1);
+    await studio.getByLabel(/^Free trial/).fill("");
+    await studio.getByRole("button", { name: "Add it" }).click();
+    const row = studio.locator("li", { hasText: "Supper Club" }).filter({ hasText: "Introductory price, 3 months" });
+    await row.first().waitFor({ timeout: 30_000 });
+    // Its id, from the link to its page in its row of the studio.
+    const club = await studio.evaluate(() => {
+      const link = [...document.querySelectorAll("a[href*='/p/']")].find((a) => a.closest("li")?.textContent?.includes("Supper Club"));
+      return link ? link.getAttribute("href").split("/p/")[1].split(/[?#]/)[0].split("-").pop() : "";
+    });
+    is("saved, with its introductory price", club.length > 0, true);
+    await studio.evaluate(async (id) => fetch("/api/store/product", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "link", id, link: "https://example.com/supper-club" }) }), club);
+
+    await open(page, `${LOCAL}/@localshop/p/${club}`);
+    const buy = page.locator("#buy form[data-checkout] button[type=submit]").first();
+    is("the button says the first price, and how long", await words(buy), "Subscribe — $5 a month for the first 3 months");
+    is("and the line under it both prices, before anybody pays", (await words(page.locator("#buy"))).includes("$5 a month for the first 3 months, then $20 a month."), true);
+    await Promise.all([page.waitForURL(/\/thanks\?session_id=/, { timeout: 120_000 }), buy.click()]);
+    const paid = services.checkouts().at(-1);
+    is("Stripe charges the regular price less a coupon for the first 3 months", [paid.mode, paid.amount_total, paid.metadata.intro, paid.discount_coupon], ["subscription", 500, "3", "mm_intro_usd_1500_3"]);
+    is("the coupon is made on the creator's account, for 3 months", services.coupons().filter((c) => c.id === "mm_intro_usd_1500_3").map((c) => [c.amount_off, c.duration, c.duration_in_months]), [["1500", "repeating", "3"]]);
+    is("and the page after paying says both prices", (await words(page.locator("main"))).includes("for $5 a month for the first 3 months, then $20 a month."), true);
+    let mail = null;
+    for (let i = 0; i < 60 && !mail; i += 1) {
+      mail = services.emails().find((email) => String(email.text ?? "").includes("Supper Club") && /You paid|Paid/.test(String(email.text ?? ""))) ?? null;
+      if (!mail) await new Promise((wait) => setTimeout(wait, 500));
+    }
+    is("and so does the confirmation email", String(mail?.text ?? "").includes("$5 a month for the first 3 months, then $20 a month"), true);
+    await studio.evaluate(async (id) => fetch("/api/store/product", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "remove", id }) }), club);
+  }
+
+  await keepSmall();
   part("Nothing went wrong on the way");
   is("no page threw an error", errors, []);
   is("and no page's own policy refused anything on it", [...new Set(policyRefusals)], []);

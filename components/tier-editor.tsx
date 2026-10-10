@@ -8,7 +8,7 @@ import { MAX_TIERS, MIN_TIERS } from "@/lib/tier-rules";
 const MESSAGES: Record<string, string> = {
   ...STUDIO_MESSAGES,
   count: `Pick ${MIN_TIERS} to ${MAX_TIERS} memberships, or none to switch it off.`,
-  tier: "One of those is no longer a membership that runs until canceled at one price. Reload the page and pick again.",
+  tier: "One of those is no longer a membership that runs until canceled at one price, with no introductory price. Reload the page and pick again.",
 };
 
 /**
@@ -56,7 +56,7 @@ export function TierEditor({ initial, memberships }: { initial: string[]; member
       </p>
       {memberships.length < MIN_TIERS ? (
         <p className="notice mt-4 text-sm">
-          Tiers need at least two memberships that run until canceled, at one price. Add another membership under Products first.
+          Tiers need at least two memberships that run until canceled, at one price, with no introductory price. Add another membership under Products first.
         </p>
       ) : (
         <>

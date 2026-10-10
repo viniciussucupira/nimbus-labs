@@ -43,6 +43,7 @@ import { type ProductFile, parseProductFile } from "@/lib/product-file";
 import { type ProductOption, parseOptions } from "@/lib/product-option";
 import { MAX_LINK_LENGTH } from "@/lib/product-link";
 import { type Recurring, parseRecurring } from "@/lib/product-recurring";
+import { type Intro, parseIntro } from "@/lib/intro-price";
 import { type CallSetup, parseSetup } from "@/lib/call-setup";
 import { COURSE_ID_PATTERN } from "@/lib/course";
 import { type Bump, type Plan, bumpTargets, canBeBumped, isOneOff, parseBump, parseBumps, parsePlan, parseStock } from "@/lib/product-extras";
@@ -218,6 +219,12 @@ export type Product = {
    */
   pick?: number | null;
   /**
+   * A membership's introductory price (lib/intro-price.ts): what its first
+   * payments cost, and how many. Absent or null is none; offered only while
+   * the membership can have one (activeIntro).
+   */
+  intro?: Intro | null;
+  /**
    * A draft: kept in the studio and left off the store, its own page and its
    * checkout until the creator publishes it. What an import makes starts
    * here. A hidden product can still be part of a bundle.
@@ -367,6 +374,7 @@ export function parseProduct(entry: unknown): Product | null {
     // Products written before bundles and drafts existed are neither.
     bundle: parseBundleItems(value.bundle),
     pick: parsePick(value.pick),
+    intro: parseIntro(value.intro),
     hidden: value.hidden === true,
   };
 }
@@ -409,6 +417,7 @@ export function listingOf(product: Listing): Listing {
     page: product.page,
     bundle: product.bundle,
     pick: product.pick ?? null,
+    intro: product.intro ?? null,
     hidden: product.hidden,
   };
 }

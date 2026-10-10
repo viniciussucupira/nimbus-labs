@@ -147,6 +147,9 @@ export async function startServices(port) {
         }
         let amount = 0;
         for (const line of lines.values()) amount += (line.unit_amount ?? 0) * (line.quantity ?? 1);
+        // A coupon that takes a set amount off, as an introductory price does, is taken off the first payment.
+        const applied = coupons.find((c) => c.id && c.id === body.get("discounts[0][coupon]"));
+        if (applied?.amount_off) amount = Math.max(0, amount - Number(applied.amount_off));
         counter += 1;
         const id = `cs_test_local${String(counter).padStart(20, "0")}`;
         sessions.set(id, {

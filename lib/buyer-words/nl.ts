@@ -10,6 +10,8 @@ const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 const S = " ";
 
 const every = (interval: Interval) => ({ day: "per dag", week: "per week", month: "per maand", year: "per jaar" })[interval];
+/** How long an introductory price lasts (lib/intro-price.ts). */
+const introFirst = (count: number, interval: Interval) => (count > 1 ? `${every("month")} de eerste ${count} maanden` : ({ day: "de eerste dag", week: "de eerste week", month: "de eerste maand", year: "het eerste jaar" })[interval]);
 
 export const nl: BuyerWords = {
   free: "Gratis",
@@ -25,6 +27,8 @@ export const nl: BuyerWords = {
     }
     return `${trial}${price} ${every(interval)}`;
   },
+  introFirst,
+  introThen: (intro, count, interval, then) => `${intro} ${introFirst(count, interval)}, daarna ${then}`,
   planWords: (payments, interval, amount) =>
     `${payments} ${interval === "week" ? "wekelijkse" : "maandelijkse"} termijnen van ${amount}`,
   endsIn: (unit, n) =>

@@ -1,5 +1,6 @@
 import { countDay } from "@/lib/day-visit";
 import { forVisitor } from "@/lib/visitor";
+import { activeIntro } from "@/lib/intro-price";
 import { salePrice } from "@/lib/store-sale";
 import { offNow } from "@/components/store-product";
 import { paypalReady } from "@/lib/paypal-sales";
@@ -98,9 +99,9 @@ export default async function CoursePage({ params, searchParams }: Params) {
   const base = `/@${store.handle}/course/${product.id}`;
   const selling = canSellProduct(store, product);
   // Said with every term the checkout will apply: a trial, a set number of
-  // payments, a price the buyer chooses.
+  // payments, an introductory price, a price the buyer chooses.
   const price = product.recurring
-    ? membershipLine(store, product.recurring, said.money(product.priceCents))
+    ? membershipLine(store, product.recurring, said.money(product.priceCents), activeIntro(product, store.tiers))
     : activePwyw(product)
       ? w.pwywPrice(said.money(product.priceCents))
       : // A sale or a fair price for the visitor's country, as the checkout takes it off.

@@ -307,6 +307,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "card", title: "Card changes without you", body: "The member changes their card and sees their receipts on the same page." },
           { icon: "book", title: "A course that stays open", body: "A course sold as a membership is open while the member pays, and closes when it ends." },
           { icon: "gift", title: "A free trial, said plainly", body: "1 to 90 days. The card is saved at the start and nothing is charged until the trial ends. The page and the button say so, and the confirmation email gives the date of the first payment." },
+          { icon: "tag", title: "A first month for less", body: "Or start members on an introductory price: $5 the first month, or for the first 1 to 12 months, then the regular price by itself. The page, the button and Stripe's checkout say both prices before anyone pays, and the confirmation says them again." },
           { icon: "calendar", title: "Or a set number of payments", body: "2 to 36 payments, and then it ends by itself. The member can still cancel before that." },
           { icon: "lock", title: "Access that ends with it", body: "When a membership ends, its files, its course and your community close, and the member is shown how to join again." },
           { icon: "chat", title: "A community for members", body: "Open your store's community to a membership. A member who stops paying loses access within five minutes.", href: "/platform/community" },
@@ -325,7 +326,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "limits",
         title: "What it does not do yet",
         items: [
-          "A free trial is a number of free days, the same for every member of that product. There is no first month at a lower price.",
+          "A free trial is a number of free days, the same for every member of that product. An introductory price is one price for the first payment, or the first months of a monthly membership, never beside a trial. Neither can be checked against who joined before, so a member who cancels and joins again starts with it again, unless a come-back offer applies instead.",
           "A membership is charged at its set price: it cannot use pay-what-you-want pricing.",
           "Files, courses and the community close when a membership ends: canceled, or unpaid once Stripe stops retrying. A link you sell stays wherever you keep it, so remove the member there.",
         ],

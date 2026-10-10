@@ -33,6 +33,11 @@ export const en = {
     }
     return `${trial}${price} ${en.every(interval)}`;
   },
+  /** "the first month", or "a month for the first 3 months": how long an introductory price lasts (lib/intro-price.ts). */
+  introFirst: (count: number, interval: Interval) => (count > 1 ? `a month for the first ${count} months` : `the first ${interval}`),
+  /** "$5 the first month, then $20 a month". */
+  introThen: (intro: string, count: number, interval: Interval, then: string) =>
+    `${intro} ${count > 1 ? `a month for the first ${count} months` : `the first ${interval}`}, then ${then}`,
   /** "3 monthly payments of $110". */
   planWords: (payments: number, interval: "week" | "month", amount: string) =>
     `${payments} ${interval === "week" ? "weekly" : "monthly"} payments of ${amount}`,

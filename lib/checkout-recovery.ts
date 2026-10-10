@@ -38,6 +38,7 @@
  *   nl:recover:link:<token>                  who a stop link belongs to
  */
 import { saleHandles } from "@/lib/store";
+import { activeIntro } from "@/lib/intro-price";
 import { createHash, randomBytes } from "node:crypto";
 import { normaliseEmail } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
@@ -268,7 +269,7 @@ async function deliver(
   const priceWords = activePwyw(product)
     ? g.youChoosePrice(money(product.priceCents))
     : product.recurring
-      ? from(membershipLine(store, product.recurring, price))
+      ? from(membershipLine(store, product.recurring, price, activeIntro(product, store.tiers)))
       : from(price);
   const stop = await stopLink(store, email);
   const text = [

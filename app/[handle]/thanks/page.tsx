@@ -36,7 +36,7 @@ import { saleClock } from "@/lib/store-sale";
 import { readListing } from "@/lib/catalog";
 import type { Store } from "@/lib/store";
 import { after } from "next/server";
-import { CONFIRM_WITHIN_SECONDS, canConfirm, confirmPurchase, fromStore, storeBase } from "@/lib/purchase-email";
+import { CONFIRM_WITHIN_SECONDS, canConfirm, confirmPurchase, fromStore, introOf, storeBase } from "@/lib/purchase-email";
 import { readConfig } from "@/lib/community";
 import { type SaleKey, activeKeys, keyForSale } from "@/lib/licence-keys";
 import { renewPath } from "@/lib/membership-access";
@@ -554,6 +554,8 @@ export default async function ThanksPage({ params, searchParams }: Params) {
 
   // A membership that has ended hands nothing over, here or anywhere else.
   const ended = order.state === "paid" && order.membership === "ended";
+  // A membership's introductory price, as its checkout carried it (lib/intro-price.ts).
+  const introPaid = order.state === "paid" && order.product.recurring ? introOf((order.record.metadata ?? {}) as Record<string, string>) : null;
 
   // Each license key this order earns: given here if the five-minute job
   // that sends the confirmation has not given it already. A sale only ever
@@ -706,7 +708,14 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     ? t.oneSessionOfPackage
                   : t.forPrice(
                       order.product.recurring
-                        ? t.priceEvery(money(order.amount, order.currency), speech(store).w.every(order.product.recurring.interval))
+                        ? introPaid
+                          ? speech(store).w.introThen(
+                              money(introPaid.cents, order.currency),
+                              introPaid.count,
+                              order.product.recurring.interval,
+                              t.priceEvery(money(introPaid.regular, order.currency), speech(store).w.every(order.product.recurring.interval)),
+                            )
+                          : t.priceEvery(money(order.amount, order.currency), speech(store).w.every(order.product.recurring.interval))
                         : order.plan
                           ? t.priceToday(money(order.amount, order.currency))
                           : money(order.amount, order.currency),

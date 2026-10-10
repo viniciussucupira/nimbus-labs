@@ -13,12 +13,15 @@ import {
   removeProduct,
   setProductAbout,
   setProductHidden,
+  setProductIntro,
   setProductLink,
   storeForEmail,
   type Product,
 } from "@/lib/store";
 import { MAX_LINK_LENGTH, readLink } from "@/lib/product-link";
 import { readRecurring } from "@/lib/product-recurring";
+import { type Intro, introProblem } from "@/lib/intro-price";
+import { priceBounds, readMoney } from "@/lib/money";
 import { MAX_ABOUT_LENGTH, cleanAbout, dropAbout, readAbout, writeAbout } from "@/lib/product-about";
 import { jsonAccess } from "@/lib/studio-route";
 import { dropPage } from "@/lib/sales-page-store";
@@ -155,6 +158,38 @@ export async function POST(request: NextRequest) {
     return Response.json({ ok: false, error: "invalid" }, { status: 400 });
   }
 
+  // A membership's introductory price (lib/intro-price.ts), only written when
+  // it was sent, so an older screen never wipes it. Checked before anything is
+  // saved, against the product as this save will leave it, so a product is
+  // never saved with half of what the creator asked for.
+  let intro: Intro | null | undefined;
+  if ((action === "add" || action === "edit") && "intro" in body) {
+    const raw = body.intro && typeof body.intro === "object" ? (body.intro as Record<string, unknown>) : null;
+    const typed = raw ? text(raw.price, 20).trim() : "";
+    if (!typed) intro = null;
+    else {
+      const store = guarded.store;
+      const cents = readMoney(typed, store.currency);
+      const count = Number(raw?.count ?? 1);
+      if (cents === null || !recurring) return Response.json({ ok: false, error: recurring ? "intro_price" : "intro_membership" }, { status: 400 });
+      intro = { cents, count: Number.isInteger(count) ? count : 0 };
+      const current = action === "edit" ? await readListing(store, id) : null;
+      const problem = introProblem(
+        {
+          id: current?.id ?? "",
+          priceCents: readMoney(price, store.currency) ?? 0,
+          recurring,
+          options: current?.options ?? [],
+          pwyw: suggested,
+        },
+        intro,
+        priceBounds(store.currency).min,
+        store.tiers,
+      );
+      if (problem) return Response.json({ ok: false, error: `intro_${problem}` }, { status: 400 });
+    }
+  }
+
   try {
     let result: Outcome;
     if (action === "add" || action === "edit") {
@@ -163,8 +198,12 @@ export async function POST(request: NextRequest) {
           ? await addProduct(ref, title, summary, price, recurring, suggested)
           : await editProduct(ref, id, title, summary, price, recurring, suggested);
       result = done.ok ? { ok: true, product: done.product } : done;
-      if (done.ok && about !== null) {
-        const saved = done.product;
+      if (done.ok && intro !== undefined && (intro !== null || done.product.intro)) {
+        const priced = await setProductIntro(ref, done.product.id, intro);
+        result = priced.ok ? { ok: true, product: priced.product } : { ok: false, reason: priced.reason };
+      }
+      if (result.ok && result.product && about !== null) {
+        const saved = result.product;
         if (about !== "" || saved.about) {
           const marked = await setProductAbout(ref, saved.id, about !== "");
           if (marked.ok && marked.store.statsId) {
