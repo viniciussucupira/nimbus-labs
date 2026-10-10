@@ -13,6 +13,7 @@
  * Only people who agreed are ever written to (lib/contacts.ts), and a month
  * has a published number of emails, counted before each batch goes out.
  */
+import { MAX_MAIL_PICTURES, readPicture, withoutPictures } from "@/lib/mail-picture-rules";
 import { NIMBUS_FROM, type BatchMessage, hasResend, sendBatch, sendEmail, sentThisMonth } from "@/lib/email";
 import { SES_BULK_SHARE, isSesConfigured, sesBulkRoom, sesReady, sesSentLast24h } from "@/lib/ses";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
@@ -297,10 +298,14 @@ function linked(text: string, goesTo?: (href: string) => string): string {
     .join("");
 }
 
-/** The creator's text as HTML: paragraphs, lists and links, nothing else. */
+/**
+ * The creator's text as HTML: paragraphs, lists, links and the pictures kept
+ * for it (lib/mail-picture-rules.ts), nothing else.
+ */
 export function bodyHtml(body: string, goesTo?: (href: string) => string): string {
   const blocks = body.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
   const out: string[] = [];
+  let pictures = 0;
   for (const block of blocks) {
     let list: string[] = [];
     let para: string[] = [];
@@ -311,6 +316,15 @@ export function bodyHtml(body: string, goesTo?: (href: string) => string): strin
       list = [];
     };
     for (const line of block.split("\n")) {
+      const picture = pictures < MAX_MAIL_PICTURES ? readPicture(line) : null;
+      if (picture) {
+        flush();
+        pictures += 1;
+        out.push(
+          `<p style="margin:0 0 16px"><img src="${escape(picture.url)}" alt="${escape(picture.alt)}" width="512" style="display:block;width:100%;max-width:512px;height:auto;border:0;border-radius:12px"></p>`,
+        );
+        continue;
+      }
       if (BULLET.test(line)) {
         if (para.length) flush();
         list.push(line.replace(BULLET, ""));
@@ -369,7 +383,7 @@ ${address ? `<p style="margin:0 0 8px">${escape(fromName)} · ${escape(address)}
 <p style="margin:0">${escape(sent)}</p>
 </div></div></body></html>`;
   const text = [
-    body.trim(),
+    withoutPictures(body).trim(),
     "",
     "—",
     why,
